@@ -2,13 +2,12 @@ import * as TaskManager from 'expo-task-manager';
 import * as Notifications from 'expo-notifications';
 import * as BackgroundTask from 'expo-background-task';
 import { supabase } from './supabase';
-import { Platform } from 'react-native'; // Importe o Platform
+import { Platform } from 'react-native';
 
 const BACKGROUND_FETCH_TASK = 'background-temperature-check';
 
-// A definição da tarefa continua a mesma
+// 1. Defina a tarefa
 TaskManager.defineTask(BACKGROUND_FETCH_TASK, async () => {
-  // ... (toda a lógica da tarefa que já fizemos)
   try {
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -19,7 +18,7 @@ TaskManager.defineTask(BACKGROUND_FETCH_TASK, async () => {
 
     const { data: campanulas, error } = await supabase
       .from('campanulas')
-      .select('nome, temp_atual, temp_max')
+      .select('nome, temp_atual, temp_max, temp_min') // Adicionado temp_min
       .eq('userID', user.id);
 
     if (error) {
@@ -29,16 +28,31 @@ TaskManager.defineTask(BACKGROUND_FETCH_TASK, async () => {
 
     if (campanulas && campanulas.length > 0) {
       for (const campanula of campanulas) {
+        // Alerta para TEMPERATURA MÁXIMA
         if (campanula.temp_atual && campanula.temp_max && campanula.temp_atual > campanula.temp_max) {
           await Notifications.scheduleNotificationAsync({
             content: {
-              title: '🌡️ Alerta de Temperatura!',
+              title: '🌡️ Alerta de Temperatura Alta!',
               body: `A temperatura da sua campânula "${campanula.nome}" ultrapassou o máximo de ${campanula.temp_max}°C.`,
               sound: 'default',
             },
             trigger: null,
           });
         }
+
+        // ---> LÓGICA ADICIONADA AQUI <---
+        // Alerta para TEMPERATURA MÍNIMA
+        if (campanula.temp_atual && campanula.temp_min && campanula.temp_atual < campanula.temp_min) {
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: '❄️ Alerta de Temperatura Baixa!',
+              body: `A temperatura da sua campânula "${campanula.nome}" está abaixo do mínimo de ${campanula.temp_min}°C.`,
+              sound: 'default',
+            },
+            trigger: null,
+          });
+        }
+        // ------------------------------------
       }
       return BackgroundTask.Result.NewData;
     }
@@ -50,15 +64,12 @@ TaskManager.defineTask(BACKGROUND_FETCH_TASK, async () => {
   }
 });
 
-// A função de registro agora verifica a plataforma
+// A função de registro continua a mesma
 export async function registerBackgroundTask() {
-  // ---> AQUI ESTÁ A CORREÇÃO <---
-  // Se a plataforma for 'web', não fazemos nada.
   if (Platform.OS === 'web') {
     console.log('Tarefas em segundo plano não são suportadas na web. Registro pulado.');
     return;
   }
-  // ---------------------------------
 
   try {
     const isRegistered = await TaskManager.isTaskRegisteredAsync(BACKGROUND_FETCH_TASK);
