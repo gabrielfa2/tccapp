@@ -276,7 +276,7 @@ export default function DetailScreen() {
                 <Text style={styles.dataValue}>
                   {isLoading ? '--' : data?.intensidade ?? '--'}%
                 </Text>
-                <Text style={styles.dataLabel}>Luz</Text>
+                <Text style={styles.dataLabel}>Potência</Text>
               </View>
               
               <View style={styles.dataCard}>
