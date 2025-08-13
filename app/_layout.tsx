@@ -7,9 +7,45 @@ import { StatusBar } from 'expo-status-bar';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { supabase } from '@/lib/supabase';
 import { Session } from '@supabase/supabase-js';
+import { Platform } from 'react-native'; // Importe o Platform
+
+// --- ADIÇÕES PARA NOTIFICAÇÕES ---
+import * as Notifications from 'expo-notifications';
+import * as Device from 'expo-device';
+import { registerBackgroundTask } from '@/lib/tasks';
+// ------------------------------------
 
 // Previne que a tela de splash seja escondida automaticamente
 SplashScreen.preventAutoHideAsync();
+
+// --- CONFIGURAÇÃO DAS NOTIFICAÇÕES ---
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
+
+// Função para registrar e pedir permissão de notificação
+async function registerForPushNotificationsAsync() {
+  if (Platform.OS === 'web') return; // Não executa na web
+  if (Device.isDevice) {
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+    if (existingStatus !== 'granted') {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+    if (finalStatus !== 'granted') {
+      console.log('Permissão para notificações não concedida!');
+      return;
+    }
+  } else {
+    console.log('É necessário um dispositivo físico para testar as notificações.');
+  }
+}
+// ------------------------------------
 
 export default function RootLayout() {
   useFrameworkReady();
@@ -23,6 +59,14 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
+    // ---> AQUI ESTÁ A CORREÇÃO <---
+    // Apenas tentamos registrar as tarefas se não estivermos na web
+    if (Platform.OS !== 'web') {
+      registerForPushNotificationsAsync();
+      registerBackgroundTask();
+    }
+    // ------------------------------------
+
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -42,17 +86,14 @@ export default function RootLayout() {
 
   useEffect(() => {
     if ((fontsLoaded || fontError) && !isLoading) {
-      // Esconde a tela de splash quando a fonte carregar (ou der erro) e auth estiver pronto
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded, fontError, isLoading]);
 
-  // Se a fonte ainda não carregou ou auth ainda está carregando, não renderiza nada para manter o splash visível
   if ((!fontsLoaded && !fontError) || isLoading) {
     return null;
   }
 
-  // Renderiza o app quando a fonte estiver pronta e auth estiver carregado
   return (
     <>
       <Stack screenOptions={{ headerShown: false }}>
