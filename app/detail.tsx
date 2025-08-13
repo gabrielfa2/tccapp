@@ -11,6 +11,26 @@ interface TemperatureReading {
   created_at: string;
 }
 
+// --- FUNÇÃO ADICIONADA PARA DETERMINAR A COR DA TEMPERATURA ---
+const getTemperatureColor = (
+  temp_atual?: number | null,
+  temp_min?: number | null,
+  temp_max?: number | null
+) => {
+  if (temp_atual == null || temp_min == null || temp_max == null) {
+    return '#fff'; // Cor padrão (branco)
+  }
+
+  if (temp_atual > temp_max || temp_atual < temp_min) {
+    return '#ef4444'; // Vermelho
+  }
+  if (temp_atual >= temp_max - 1 || temp_atual <= temp_min + 1) {
+    return '#f59e0b'; // Amarelo
+  }
+  return '#4ade80'; // Verde
+};
+// ----------------------------------------------------------------
+
 export default function DetailScreen() {
   const { nome, codigo } = useLocalSearchParams<{ nome: string; codigo: string }>();
   const [data, setData] = useState<Campanula | null>(null);
@@ -21,24 +41,22 @@ export default function DetailScreen() {
 
   const screenWidth = Dimensions.get('window').width;
 
-  // Efeito para buscar os dados da campânula
   useEffect(() => {
     if (!codigo) return;
     
     fetchData();
     fetchChartData();
     
-    // Atualiza os dados a cada 5 segundos
     const interval = setInterval(() => {
       fetchData();
       fetchChartData();
     }, 5000); 
 
-    // Limpa o intervalo quando a tela é desmontada
     return () => clearInterval(interval);
   }, [codigo]);
 
   const fetchData = async () => {
+    // ... (função fetchData inalterada)
     if (!codigo) return;
     try {
       const { data: result, error } = await supabase
@@ -60,11 +78,11 @@ export default function DetailScreen() {
   };
 
   const fetchChartData = async () => {
+    // ... (função fetchChartData inalterada)
     if (!codigo) return;
     
     setIsLoadingChart(true);
     try {
-      // Calculate 24 hours ago
       const twentyFourHoursAgo = new Date();
       twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
 
@@ -86,7 +104,6 @@ export default function DetailScreen() {
         return;
       }
 
-      // Process data for chart
       const processedData = processChartData(readings);
       setChartData(processedData);
 
@@ -99,9 +116,9 @@ export default function DetailScreen() {
   };
 
   const processChartData = (readings: TemperatureReading[]) => {
+    // ... (função processChartData inalterada)
     if (!readings || readings.length === 0) return null;
 
-    // Objeto para agrupar leituras por intervalo de 30 minutos
     const intervalData: { [key: string]: number[] } = {};
 
     readings.forEach(reading => {
@@ -109,7 +126,6 @@ export default function DetailScreen() {
       const hour = date.getHours();
       const minutes = date.getMinutes();
 
-      // Define a chave do intervalo como 'HH:00' ou 'HH:30'
       const intervalKey = minutes < 30
         ? `${hour.toString().padStart(2, '0')}:00`
         : `${hour.toString().padStart(2, '0')}:30`;
@@ -120,7 +136,6 @@ export default function DetailScreen() {
       intervalData[intervalKey].push(reading.temperatura);
     });
 
-    // Ordena as chaves para garantir a ordem cronológica no gráfico
     const sortedKeys = Object.keys(intervalData).sort((a, b) => {
       const [hourA, minA] = a.split(':').map(Number);
       const [hourB, minB] = b.split(':').map(Number);
@@ -133,7 +148,6 @@ export default function DetailScreen() {
     const labels: string[] = [];
     const temperatures: number[] = [];
 
-    // Usa as chaves ordenadas para montar os dados do gráfico
     sortedKeys.forEach(key => {
       const temps = intervalData[key];
       const avgTemp = temps.reduce((sum, temp) => sum + temp, 0) / temps.length;
@@ -142,9 +156,8 @@ export default function DetailScreen() {
       temperatures.push(Math.round(avgTemp * 10) / 10);
     });
 
-    // Ajuste para exibir os rótulos.
     const displayLabels = labels.map((label, index) => {
-      return index % 8 === 0 ? label : ''; // Mostra 1 a cada 8 rótulos
+      return index % 8 === 0 ? label : '';
     });
 
     return {
@@ -159,8 +172,8 @@ export default function DetailScreen() {
     };
   };
 
-  // Função de remover corrigida para interagir com o Supabase
   const handleRemove = () => {
+    // ... (função handleRemove inalterada)
     Alert.alert(
       'Remover Campânula',
       `Tem certeza que deseja remover "${nome}"? Esta ação não pode ser desfeita.`,
@@ -172,8 +185,6 @@ export default function DetailScreen() {
           onPress: async () => {
             setIsRemoving(true);
             try {
-              // A lógica correta é ATUALIZAR a linha, limpando os dados do usuário,
-              // e não deletar a linha inteira. Isso "libera" a campânula.
               const { error } = await supabase
                 .from('campanulas')
                 .update({ 
@@ -187,7 +198,7 @@ export default function DetailScreen() {
               }
               
               Alert.alert('Sucesso', 'A campânula foi removida.');
-              router.replace('/'); // Volta para o dashboard
+              router.replace('/');
 
             } catch (error: any) {
               console.error('Error removing campanula:', error);
@@ -202,8 +213,7 @@ export default function DetailScreen() {
   };
 
   const chartConfig = {
-    // AQUI ESTÁ A ALTERAÇÃO PRINCIPAL:
-    // Forçamos o fundo do gráfico a ser transparente para que o estilo do container apareça.
+    // ... (configuração do gráfico inalterada)
     backgroundColor: 'transparent',
     backgroundGradientFrom: 'transparent',
     backgroundGradientTo: 'transparent',
@@ -225,6 +235,14 @@ export default function DetailScreen() {
       strokeWidth: 1,
     },
   };
+  
+  // --- APLICAÇÃO DA COR DINÂMICA ---
+  const temperatureColor = getTemperatureColor(
+    data?.temp_atual,
+    data?.temp_min,
+    data?.temp_max
+  );
+  // ------------------------------------
 
   return (
     <View style={styles.container}>
@@ -246,7 +264,8 @@ export default function DetailScreen() {
             <View style={styles.dataGrid}>
               <View style={styles.dataCard}>
                 <Thermometer size={24} color="#ef4444" />
-                <Text style={styles.dataValue}>
+                {/* ESTILO DA COR APLICADO AQUI */}
+                <Text style={[styles.dataValue, { color: temperatureColor }]}>
                   {isLoading ? '--' : data?.temp_atual ?? '--'}°C
                 </Text>
                 <Text style={styles.dataLabel}>Temperatura</Text>
@@ -257,7 +276,7 @@ export default function DetailScreen() {
                 <Text style={styles.dataValue}>
                   {isLoading ? '--' : data?.intensidade ?? '--'}%
                 </Text>
-                <Text style={styles.dataLabel}>Potência</Text>
+                <Text style={styles.dataLabel}>Luz</Text>
               </View>
               
               <View style={styles.dataCard}>
@@ -293,7 +312,7 @@ export default function DetailScreen() {
             </View>
           </View>
 
-          {/* Temperature Chart Section */}
+          {/* Seção do Gráfico (inalterada) */}
           <View style={styles.chartSection}>
             <Text style={styles.sectionTitle}>Temperatura nas Últimas 24h</Text>
             
@@ -303,7 +322,6 @@ export default function DetailScreen() {
                 <Text style={styles.loadingText}>Carregando dados do gráfico...</Text>
               </View>
             ) : chartData ? (
-              // O container do gráfico já tem a cor de fundo correta.
               <View style={styles.chartContainer}>
                 <LineChart
                   data={chartData}
@@ -352,6 +370,7 @@ export default function DetailScreen() {
   );
 }
 
+// ... (o restante do código de styles permanece o mesmo)
 const styles = StyleSheet.create({
   container: {
     flex: 1,
