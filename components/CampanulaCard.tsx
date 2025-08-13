@@ -136,7 +136,7 @@ export default function CampanulaCard({ campanula, color, onPress }: CampanulaCa
                   <Text style={styles.dataValue}>
                     {isLoading ? '--' : data?.intensidade ?? '--'}%
                   </Text>
-                  <Text style={styles.dataLabel}>Luminosidade</Text>
+                  <Text style={styles.dataLabel}>Potência</Text>
                 </View>
               </View>
             </View>
