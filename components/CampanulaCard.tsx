@@ -19,6 +19,26 @@ const CARD_GRADIENTS = [
   ['#1c1c1c', '#2c2c2c'], // Medium dark
 ];
 
+// --- FUNÇÃO ADICIONADA PARA DETERMINAR A COR DA TEMPERATURA ---
+const getTemperatureColor = (
+  temp_atual?: number | null,
+  temp_min?: number | null,
+  temp_max?: number | null
+) => {
+  if (temp_atual == null || temp_min == null || temp_max == null) {
+    return '#fff'; // Cor padrão (branco) se algum dado estiver faltando
+  }
+
+  if (temp_atual > temp_max || temp_atual < temp_min) {
+    return '#ef4444'; // Vermelho para fora dos limites
+  }
+  if (temp_atual >= temp_max - 1 || temp_atual <= temp_min + 1) {
+    return '#f59e0b'; // Amarelo para temperaturas próximas aos limites
+  }
+  return '#4ade80'; // Verde para temperaturas seguras
+};
+// ----------------------------------------------------------------
+
 export default function CampanulaCard({ campanula, color, onPress }: CampanulaCardProps) {
   const [data, setData] = useState<Campanula | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -69,6 +89,14 @@ export default function CampanulaCard({ campanula, color, onPress }: CampanulaCa
   const gradient = CARD_GRADIENTS[gradientIndex];
   const isOnline = data !== null;
 
+  // --- APLICAÇÃO DA COR DINÂMICA ---
+  const temperatureColor = getTemperatureColor(
+    data?.temp_atual,
+    data?.temp_min,
+    data?.temp_max
+  );
+  // ------------------------------------
+
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -77,20 +105,14 @@ export default function CampanulaCard({ campanula, color, onPress }: CampanulaCa
       activeOpacity={0.9}
     >
       <Animated.View style={[styles.card, { transform: [{ scale: scaleAnim }] }]}>
-        {/* Dark Gradient Background */}
         <LinearGradient
           colors={gradient}
           style={styles.gradientBackground}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
         />
-
-        {/* Subtle Pattern Overlay */}
         <View style={styles.patternOverlay} />
-
-        {/* Card Content */}
         <View style={styles.cardContent}>
-          {/* Header with Status */}
           <View style={styles.header}>
             <View style={styles.statusIndicator}>
               {isOnline ? (
@@ -100,8 +122,6 @@ export default function CampanulaCard({ campanula, color, onPress }: CampanulaCa
               )}
             </View>
           </View>
-
-          {/* Main Content */}
           <View style={styles.mainContent}>
             <Text style={styles.name} numberOfLines={2}>
               {campanula.nome}
@@ -110,8 +130,6 @@ export default function CampanulaCard({ campanula, color, onPress }: CampanulaCa
               @{campanula.id.toLowerCase()}
             </Text>
           </View>
-
-          {/* Data Grid */}
           <View style={styles.dataGrid}>
             <View style={styles.dataRow}>
               <View style={styles.dataItem}>
@@ -119,14 +137,14 @@ export default function CampanulaCard({ campanula, color, onPress }: CampanulaCa
                   <Thermometer size={18} color="#ef4444" />
                 </View>
                 <View style={styles.dataTextContainer}>
-                  <Text style={styles.dataValue}>
+                  {/* ESTILO DA COR APLICADO AQUI */}
+                  <Text style={[styles.dataValue, { color: temperatureColor }]}>
                     {isLoading ? '--' : data?.temp_atual ?? '--'}°C
                   </Text>
                   <Text style={styles.dataLabel}>Temperatura</Text>
                 </View>
               </View>
             </View>
-
             <View style={styles.dataRow}>
               <View style={styles.dataItem}>
                 <View style={styles.iconContainer}>
@@ -140,7 +158,6 @@ export default function CampanulaCard({ campanula, color, onPress }: CampanulaCa
                 </View>
               </View>
             </View>
-
             <View style={styles.dataRow}>
               <View style={styles.dataItem}>
                 <View style={styles.iconContainer}>
@@ -155,8 +172,6 @@ export default function CampanulaCard({ campanula, color, onPress }: CampanulaCa
               </View>
             </View>
           </View>
-
-          {/* Action Button */}
           <TouchableOpacity style={styles.actionButton} onPress={onPress}>
             <Text style={styles.actionButtonText}>Ver Detalhes</Text>
           </TouchableOpacity>
@@ -166,6 +181,7 @@ export default function CampanulaCard({ campanula, color, onPress }: CampanulaCa
   );
 }
 
+// ... (o restante do código de styles permanece o mesmo)
 const styles = StyleSheet.create({
   card: {
     width: 280,
